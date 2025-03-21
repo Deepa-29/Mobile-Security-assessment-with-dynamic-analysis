@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Radar - VirusTotal API Integration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        async function handleFormSubmit(event, formType) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const url = formType === 'file' ? '/upload_file' : '/scan_url';
+            const resultContainer = document.getElementById('result');
+            
+            resultContainer.innerHTML = '<p>Scanning... Please wait.</p>';
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                });
+                const result = await response.json();
+                displayResult(result);
+            } catch (error) {
+                console.error('Error:', error);
+                resultContainer.innerHTML = <p class="error">An error occurred: ${error.message}</p>;
+            }
+        }
+
+        function displayResult(result) {
+            const resultContainer = document.getElementById('result');
+            resultContainer.innerHTML = '';
+
+            if (result.error) {
+                resultContainer.innerHTML = `
+                    <div class="error-container">
+                        <h3>Error</h3>
+                        <p>${result.error}</p>
+                    </div>
+                `;
+            } else {
+                let sourcesHtml = '<h4>Scan Sources:</h4><table class="sources-table">' +
+                    '<tr><th>Engine</th><th>Category</th><th>Result</th></tr>' +
+                    result.sources.map(source => 
+                        `<tr class="${source.category}">
+                            <td>${source.engine}</td>
+                            <td>${source.category}</td>
+                            <td>${source.result}</td>
+                         </tr>`
+                    ).join('') +
+                    '</table>';
+
+                resultContainer.innerHTML = `
+                    <div class="result-container">
+                        <h3>Scan Result</h3>
+                        <p>Status: ${result.status}</p>
+                        <p>Total Scans: ${result.total_scans}</p>
+                        <p>Malicious: ${result.malicious}</p>
+                        <p>Undetected: ${result.undetected}</p>
+                        <p>Vulnerable: ${result.vulnerable ? 'Yes' : 'No'}</p>
+                        ${sourcesHtml}
+                    </div>
+                `;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('file-form').addEventListener('submit', (event) => handleFormSubmit(event, 'file'));
+            document.getElementById('url-form').addEventListener('submit', (event) => handleFormSubmit(event, 'url'));
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Risk Radar</h1>
+        <main>
+            <section id="upload">
+                <h2>Upload and Scan Your File</h2>
+                <form id="file-form" enctype="multipart/form-data">
+                    <input type="file" name="file" id="file" required>
+                    <button type="submit">Scan File</button>
+                </form>
+            </section>
+
+            <section id="scan-url">
+                <h2>Scan a URL</h2>
+                <form id="url-form">
+                    <input type="url" name="url" placeholder="Enter URL" required>
+                    <button type="submit">Scan URL</button>
+                </form>
+            </section>
+
+            <section id="result">
+                <!-- Results will be displayed here -->
+            </section>
+        </main>
+    </div>
+</body>
+</html>
